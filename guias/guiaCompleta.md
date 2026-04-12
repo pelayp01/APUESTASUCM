@@ -180,6 +180,9 @@ flowchart LR
 | `registrarJugador(TJugador)` | INSERT en `Usuario` + `Jugador` + `Cartera_Virtual` | Transacción con commit/rollback. Cartera inicial: 500 UCM Coins |
 | `buscarPorCorreoYPassword(correo, pass)` | `SELECT … FROM Usuario INNER JOIN Jugador WHERE correo=? AND password=?` | Devuelve `TJugador` o null |
 | `actualizarRiesgo(idJugador, nuevoRiesgo)` | `UPDATE Jugador SET riesgoActual=? WHERE id_jugador=?` | Actualizado automáticamente tras cada partida |
+| `leerTodos()` | `SELECT ... FROM Usuario INNER JOIN Jugador` | Devuelve lista de todos los `TJugador` (Operación Read) |
+| `editarJugador(TJugador)` | `UPDATE Usuario ...`, `UPDATE Jugador ...` | Modifica datos del usuario (Operación Update) |
+| `eliminarJugador(id)` | `DELETE FROM Usuario WHERE id=?` | Borrado en cascada de cuenta (Operación Delete) |
 
 ```mermaid
 flowchart TD
@@ -237,6 +240,14 @@ flowchart TD
 | `buscarRecurso(idRecurso)` | `SELECT * FROM Recurso_Educativo WHERE idRecurso=?` | Un recurso por ID |
 | `registrarVisualizacion(jugadorId, recursoId)` | `INSERT INTO Jugador_Recurso (jugador_id, recurso_id)` | Marca como visto (N:M) |
 | `leerVistosPorJugador(jugadorId)` | `SELECT RE.* FROM Recurso_Educativo RE JOIN Jugador_Recurso JR ON … WHERE JR.jugador_id=?` | Recursos ya vistos por un jugador |
+
+---
+
+### `DAOAdministradorImp.java`
+
+| Método | SQL | Descripción |
+|--------|-----|-------------|
+| `buscarPorCorreoYPassword(correo, pass)` | `SELECT … FROM Usuario INNER JOIN Administrador ...` | Devuelve un `TAdministrador` si se autentica correctamente. |
 
 ---
 
@@ -426,13 +437,16 @@ SAMensajeAlerta (interface)
 |-------|-------------|------------------------|
 | `VistaPrincipal` | Menú inicial: 3 botones (Registrar, Catálogo, Login) | — |
 | `VistaRegistroJugador` | Formulario de alta (nombre, DNI, correo, contraseña, edad) | `ControladorJugador` |
-| `VistaLogin` | Formulario login (correo + contraseña) | `ControladorJugador` |
-| `VistaPanelJugador` | Hub post-login. Muestra alertas automáticas, 4 botones de navegación | `ControladorSimulacion`, `SAMensajeAlertaImpl` |
+| `VistaLogin` | Formulario login con opciones de rol (Jugador / Administrador) | `ControladorJugador`, `ControladorAdministrador` |
+| `VistaPanelJugador` | Hub post-login. Muestra alertas, botones de funcionalidad y "Mi Perfil" | `ControladorSimulacion`, `SAMensajeAlertaImpl` |
+| `VistaPerfilJugador` | Permite actualizar datos personales o eliminar cuenta propia | `ControladorJugador` |
+| `VistaPanelAdministrador` | Menú post-login exclusivo para administradores | `ControladorAdministrador` |
+| `VistaGestionJugadores` | Listado completo CRUD de jugadores (Editar/Borrar plataforma) | `ControladorJugador` |
 | `VistaCartera` | Saldo actual + botones Ingresar / Retirar | `ControladorCartera` |
 | `VistaHistorial` | Tabla de simulaciones + resumen educativo (total apostado, balance, % victorias) | `ControladorSimulacion` |
 | `VistaJuegos` | Tabla de todos los juegos disponibles + botón Jugar Blackjack | `ControladorJuego`, `ControladorSimulacion` |
 | `VistaPlayBlackjack` | Formulario para introducir apuesta y ver resultado de la mano | `ControladorSimulacion` |
-| `VistaRecursos` | Lista de recursos educativos + botón "Marcar como visto" + historial de recursos vistos | `ControladorRecursoEducativo` |
+| `VistaRecursos` | Lista de recursos educativos + botón "Marcar como visto" + historial visto | `ControladorRecursoEducativo` |
 
 ---
 
@@ -708,66 +722,63 @@ src/
 ├── Presentacion/
 │   ├── VistaPrincipal.java               ← Menú inicio (3 botones)
 │   ├── VistaRegistroJugador.java         ← Formulario de registro
-│   ├── VistaLogin.java                   ← Formulario login
-│   ├── VistaPanelJugador.java            ← Hub post-login + alertas automáticas
+│   ├── VistaLogin.java                   ← Formulario login con roles
+│   ├── VistaPanelJugador.java            ← Hub post-login + de Jugador
+│   ├── VistaPerfilJugador.java           ← Edición / Borrado de Cuenta Propia
+│   ├── VistaPanelAdministrador.java      ← Hub post-login de Administrador
+│   ├── VistaGestionJugadores.java        ← Panel CRUD general de Jugadores
 │   ├── VistaCartera.java                 ← Consultar/Ingresar/Retirar saldo
-│   ├── VistaHistorial.java               ← Tabla historial + resumen educativo
-│   ├── VistaJuegos.java                  ← Catálogo de juegos + acceso a Blackjack
+│   ├── VistaHistorial.java               ← Tabla historial + resumen
+│   ├── VistaJuegos.java                  ← Catálogo de juegos
 │   ├── VistaPlayBlackjack.java           ← Interfaz de juego Blackjack
-│   ├── VistaRecursos.java                ← Recursos educativos + historial visto
-│   ├── ControladorJugador.java           ← procesarRegistro() + procesarLogin()
-│   ├── ControladorCartera.java           ← consultarCartera() + ingresar/retirar()
-│   ├── ControladorSimulacion.java        ← solicitarHistorial() + jugarBlackjack()
-│   ├── ControladorJuego.java             ← solicitarJuegos()
-│   └── ControladorRecursoEducativo.java  ← solicitarRecursos() + marcarVisto() + historial()
+│   ├── VistaRecursos.java                ← Recursos educativos + historial
+│   ├── ControladorJugador.java           ← CRUD y Auth Jugador
+│   ├── ControladorAdministrador.java     ← Auth de Administrador
+│   ├── ControladorCartera.java           
+│   ├── ControladorSimulacion.java        
+│   ├── ControladorJuego.java             
+│   └── ControladorRecursoEducativo.java  
 │
 ├── Negocio/
 │   ├── TUsuario.java                     ← TO base de usuarios
-│   ├── TJugador.java                     ← TO jugador (extiende TUsuario + riesgoActual)
-│   ├── TJuego.java                       ← TO juego
-│   ├── TSimulacion.java                  ← TO simulación/partida
-│   ├── TCartera.java                     ← TO cartera virtual
-│   ├── TRecursoEducativo.java            ← TO recurso educativo
-│   ├── TMensajeAlerta.java               ← TO mensaje de alerta
-│   ├── SAJugador.java                    ← Interface: registrarJugador + login
-│   ├── SAJugadorImpl.java                ← Impl: validaciones de edad, DNI, pass
-│   ├── SACartera.java                    ← Interface: consultar/ingresar/retirar
-│   ├── SACarteraImpl.java                ← Impl: valida saldo suficiente
-│   ├── SASimulacion.java                 ← Interface: consultarHistorial + jugarBlackjack
-│   ├── SASimulacionImpl.java             ← Impl: lógica Blackjack + evaluación de riesgo
-│   ├── SAJuego.java                      ← Interface: mostrarTodosLosJuegos
-│   ├── SAJuegoImpl.java                  ← Impl: lista juegos
-│   ├── SARecursoEducativo.java           ← Interface: listar + marcarVisto + vistos
-│   ├── SARecursoEducativoImpl.java       ← Impl
-│   ├── SAMensajeAlerta.java              ← Interface: obtenerAlertas
-│   ├── SAMensajeAlertaImpl.java          ← Impl: filtra por umbral de pérdidas
-│   ├── Usuario.java                      ← Clase de dominio (herencia)
-│   ├── Jugador.java                      ← Clase de dominio
-│   ├── Administrador.java                ← Clase de dominio
-│   ├── Juego.java                        ← Clase de dominio
-│   ├── Blackjack.java                    ← Clase de dominio
-│   ├── CarteraVirtual.java               ← Clase de dominio
-│   ├── Simulacion.java                   ← Clase de dominio
-│   ├── RecursoEducativo.java             ← Clase de dominio
-│   ├── riesgo.java                       ← Enum BAJO / MEDIO / ALTO
-│   └── tipoUsuario.java                  ← Enum JUGADOR / ADMINISTRADOR
+│   ├── TJugador.java                     ← TO jugador (hereda)
+│   ├── TAdministrador.java               ← TO administrador (hereda)
+│   ├── TJuego.java                       
+│   ├── TSimulacion.java                  
+│   ├── TCartera.java                     
+│   ├── TRecursoEducativo.java            
+│   ├── TMensajeAlerta.java               
+│   ├── SAJugador.java                    ← Interface: Auth + CRUD completo
+│   ├── SAJugadorImpl.java                
+│   ├── SAAdministrador.java              ← Interface: Auth Admin
+│   ├── SAAdministradorImpl.java          
+│   ├── SACartera.java                    
+│   ├── SACarteraImpl.java                
+│   ├── SASimulacion.java                 
+│   ├── SASimulacionImpl.java             
+│   ├── SAJuego.java                      
+│   ├── SAJuegoImpl.java                  
+│   ├── SARecursoEducativo.java           
+│   ├── SARecursoEducativoImpl.java       
+│   ├── SAMensajeAlerta.java              
+│   ├── SAMensajeAlertaImpl.java          
 │
 └── Integracion/
-    ├── BDConexion.java                   ← Singleton de conexión MySQL
-    ├── DAOJugador.java                   ← Interface DAO jugador
-    ├── DAOJugadorImp.java                ← INSERT (transacción 3 tablas) + SELECT JOIN + UPDATE riesgo
-    ├── DAOCartera.java                   ← Interface DAO cartera
-    ├── DAOCarteraImp.java                ← SELECT + UPDATE saldo
-    ├── DAOSimulacion.java                ← Interface DAO simulación
-    ├── DAOSimulacionImp.java             ← SELECT historial + INSERT partida
-    ├── DAOJuego.java                     ← Interface DAO juego
-    ├── DAOJuegoImpl.java                 ← SELECT * FROM Juego
-    ├── DAORecursoEducativo.java          ← Interface DAO recurso
-    ├── DAORecursoEducativoImpl.java      ← SELECT + INSERT Jugador_Recurso + SELECT vistos
-    ├── DAOMensajeAlerta.java             ← Interface DAO alerta
-    ├── DAOMensajeAlertaImp.java          ← SELECT WHERE umbralPerdida <= ?
-    ├── DaoAdministrador.java             ← Interface DAO admin
-    └── DAOAdministradorImp.java          ← (sin implementación activa)
+    ├── BDConexion.java                   ← Singleton MySQL
+    ├── DAOJugador.java                   
+    ├── DAOJugadorImp.java                ← CRUD SQL de Jugadores
+    ├── DAOAdministrador.java             
+    ├── DAOAdministradorImp.java          ← SELECT SQL Administrador
+    ├── DAOCartera.java                   
+    ├── DAOCarteraImp.java                
+    ├── DAOSimulacion.java                
+    ├── DAOSimulacionImp.java             
+    ├── DAOJuego.java                     
+    ├── DAOJuegoImpl.java                 
+    ├── DAORecursoEducativo.java          
+    ├── DAORecursoEducativoImpl.java      
+    ├── DAOMensajeAlerta.java             
+    └── DAOMensajeAlertaImp.java          
 
-pruebaBD.sql                              ← Script DDL + DML completo
+pruebaBD.sql                              ← Script DDL + DML completo (1.6)
 ```
