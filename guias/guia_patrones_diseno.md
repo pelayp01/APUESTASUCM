@@ -60,9 +60,9 @@ TJugador jugador = new TJugador.Builder()
 
 Se enfocan en cómo las clases y objetos se componen para formar estructuras más grandes.
 
-### 🌟 Facade (Fachada)
-**Implementación actual:** Ya utilizas una filosofía Facade con tus clases `SA...` (Servicio de Aplicación). Por ejemplo, `SAJugadorImpl` unifica el registro y comprobación de datos sin que la capa de Presentación sepa qué DAOs están operando abajo.
-**Mejora:** Puedes crear un `FacadeEcosistema` unificado si la interacción entre apuestas, carteras y jugadores se vuelve muy compleja.
+### 🌟 Fachada (Facade)
+**Implementación actual:** Ya utilizas una filosofía Fachada con tus clases `SA...` (Servicio de Aplicación). Por ejemplo, `SAJugadorImpl` unifica el registro y comprobación de datos sin que la capa de Presentación sepa qué DAOs están operando abajo.
+**Mejora:** Puedes crear un `FachadaEcosistema` unificado si la interacción entre apuestas, carteras y jugadores se vuelve muy compleja.
 
 ### 🌟 Proxy
 **Caso de uso:** Carga perezosa (Lazy Loading) de las imágenes de Recursos Educativos o el Historial del jugador.

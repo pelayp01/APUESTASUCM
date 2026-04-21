@@ -15,6 +15,7 @@
 6. [Flujos Completos por Funcionalidad](#flujos)
 7. [Datos de Prueba](#datos-prueba)
 8. [Puesta en Marcha](#puesta-en-marcha)
+9. [Patrones de Diseño Implementados](#patrones)
 
 ---
 
@@ -28,19 +29,21 @@ graph TB
     end
 
     subgraph "NEGOCIO (src/Negocio/)"
+        F[Fachada\nFachadaEcosistema.java]
         SA[Servicios de Aplicación\nSAXxx.java / SAXxxImpl.java]
         T[Transfer Objects\nTXxx.java]
     end
 
     subgraph "INTEGRACION (src/Integracion/)"
-        DAO[DAOs\nDAOXxx.java / DAOXxxImpl.java]
+        DAO[DAOs\nDAOXxx.java / DAOXxxImp.java]
         BD[BDConexion.java\nSingleton de conexión]
     end
 
     DB[(MySQL\napuestasucm\n127.0.0.1:3306)]
 
     V -- "llama a" --> C
-    C -- "usa TOs + llama a" --> SA
+    C -- "usa TOs + llama a" --> F
+    F -- "delega/orquesta" --> SA
     SA -- "valida + llama a" --> DAO
     DAO -- "SQL JDBC" --> BD
     BD --> DB
@@ -639,7 +642,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    MAIN[MainApp.java] --> VP[VistaPrincipal]
+    MAIN[MainProyecto.java] --> VP[VistaPrincipal]
 
     VP -->|Btn Registrar| VR[VistaRegistroJugador]
     VP -->|Btn Catálogo| VJ[VistaJuegos]
@@ -709,7 +712,7 @@ Añadir **MySQL Connector/J** al classpath:
 
 ### Paso 4 — Ejecutar
 
-Ejecutar [`MainApp.java`](file:///c:/Users/pable/OneDrive/Desktop/25-26/Segundo%20cuatri/IS2/proyecto-de-is2-equipo-08-apuestasucm/src/MainApp.java) como **Java Application** (clic derecho → Run As → Java Application).
+Ejecutar [`MainProyecto.java`](file:///c:/Users/pable/OneDrive/Desktop/25-26/Segundo%20cuatri/IS2/proyecto-de-is2-equipo-08-apuestasucm/src/MainProyecto.java) como **Java Application** (clic derecho → Run As → Java Application).
 
 ---
 
@@ -717,7 +720,7 @@ Ejecutar [`MainApp.java`](file:///c:/Users/pable/OneDrive/Desktop/25-26/Segundo%
 
 ```
 src/
-├── MainApp.java                          ← PUNTO DE ENTRADA ÚNICO
+├── MainProyecto.java                          ← PUNTO DE ENTRADA ÚNICO
 │
 ├── Presentacion/
 │   ├── VistaPrincipal.java               ← Menú inicio (3 botones)
@@ -730,7 +733,8 @@ src/
 │   ├── VistaCartera.java                 ← Consultar/Ingresar/Retirar saldo
 │   ├── VistaHistorial.java               ← Tabla historial + resumen
 │   ├── VistaJuegos.java                  ← Catálogo de juegos
-│   ├── VistaPlayBlackjack.java           ← Interfaz de juego Blackjack
+│   ├── VistaPlayBlackjack.java           ← Interfaz de juego Blackjack (ahora dispara recurso automático)
+│   ├── VistaDialogoRecurso.java          ← Popup flotante custom (HTML) para forzar lectura de prevención
 │   ├── VistaRecursos.java                ← Recursos educativos + historial
 │   ├── ControladorJugador.java           ← CRUD y Auth Jugador
 │   ├── ControladorAdministrador.java     ← Auth de Administrador
@@ -740,13 +744,15 @@ src/
 │   └── ControladorRecursoEducativo.java  
 │
 ├── Negocio/
-│   ├── TUsuario.java                     ← TO base de usuarios
-│   ├── TJugador.java                     ← TO jugador (hereda)
+│   ├── FachadaEcosistema.java             ← Patrón Facade: Interfaz unificada para UI
+│   ├── FachadaEcosistemaImpl.java         ← Implementación del Facade que coordina SAs
+│   ├── TUsuario.java                     ← TO base de usuarios (Usa Builder)
+│   ├── TJugador.java                     ← TO jugador (hereda, Usa Builder)
 │   ├── TAdministrador.java               ← TO administrador (hereda)
 │   ├── TJuego.java                       
 │   ├── TSimulacion.java                  
-│   ├── TCartera.java                     
-│   ├── TRecursoEducativo.java            
+│   ├── TCartera.java                     ← TO Cartera (Usa Builder)
+│   ├── TRecursoEducativo.java            ← TO Recurso (Usa Builder)
 │   ├── TMensajeAlerta.java               
 │   ├── SAJugador.java                    ← Interface: Auth + CRUD completo
 │   ├── SAJugadorImpl.java                
@@ -782,3 +788,36 @@ src/
 
 pruebaBD.sql                              ← Script DDL + DML completo (1.6)
 ```
+
+---
+
+## 🏗️ 9. Patrones de Diseño Implementados {#patrones}
+
+Como parte de la evolución de la arquitectura y siguiendo la guía GoF, el proyecto implementa los siguientes patrones para asegurar el bajo acoplamiento y alta cohesión.
+
+### 9.1 Patrón Builder (Creacional)
+**Archivos:** `TUsuario.java`, `TJugador.java`, `TCartera.java`, `TRecursoEducativo.java`.
+
+Los Transfer Objects se construyen ahora previniendo el uso excesivo de métodos `.set...()` secuenciales (API Fluida). Esto hace más evidente la creación de objetos en un solo "pass", algo crucial en el `ControladorJugador` a la hora de registrar a un usuario con múltiples detalles.
+
+**Ejemplo de uso:**
+```java
+TJugador nuevoJugador = new TJugador.Builder()
+        .conId(id)
+        .conDni(dni)
+        .conNombre(nombre)
+        .conApellidos(apellidos)
+        .conCorreo(correo)
+        .conPassword(pass)
+        .conEdad(edad)
+        .build();
+```
+
+### 9.2 Patrón Facade (Estructural)
+**Archivos:** `FachadaEcosistema.java`, `FachadaEcosistemaImpl.java`.
+
+La Fachada proporciona una interfaz única y simplificada enfocada 100% para la Capa de Presentación, resguardándola de la lógica sobre múltiples `SA (Servicios de Aplicación)`. 
+
+*   **Problema resuelto:** Los Controladores estaban asumiendo responsabilidades orquestales. Por ejemplo, al dar un error de edad, el `ControladorJugador` instanciaba directamente un `SARecursoEducativo` para dar el popup apropiado. Con la fachada, el controlador solo interactúa con un único objeto genérico `facade`.
+*   **Implementación:** Componentes visuales instancian `FachadaEcosistema facade = new FachadaEcosistemaImpl();`. Cuando piden `facade.ingresarDinero()`, internamente la fachada averigua qué SA se encarga de esto e invoca su lógica, quitando acoplamiento directo entre Presentación y cada subsistema individual de Negocio.
+
