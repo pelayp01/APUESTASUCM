@@ -813,11 +813,19 @@ TJugador nuevoJugador = new TJugador.Builder()
         .build();
 ```
 
-### 9.2 Patrón Facade (Estructural)
+### 9.2 Patrón Facade / Business Delegate (Estructural)
 **Archivos:** `FachadaEcosistema.java`, `FachadaEcosistemaImpl.java`.
 
-La Fachada proporciona una interfaz única y simplificada enfocada 100% para la Capa de Presentación, resguardándola de la lógica sobre múltiples `SA (Servicios de Aplicación)`. 
+La Fachada actúa como un **Business Delegate**, proporcionando un punto de acceso único y centralizado para la Capa de Presentación, resguardándola de la lógica sobre múltiples `SA (Servicios de Aplicación)`.
 
-*   **Problema resuelto:** Los Controladores estaban asumiendo responsabilidades orquestales. Por ejemplo, al dar un error de edad, el `ControladorJugador` instanciaba directamente un `SARecursoEducativo` para dar el popup apropiado. Con la fachada, el controlador solo interactúa con un único objeto genérico `facade`.
-*   **Implementación:** Componentes visuales instancian `FachadaEcosistema facade = new FachadaEcosistemaImpl();`. Cuando piden `facade.ingresarDinero()`, internamente la fachada averigua qué SA se encarga de esto e invoca su lógica, quitando acoplamiento directo entre Presentación y cada subsistema individual de Negocio.
+*   **Problema resuelto:** Los Controladores estaban asumiendo responsabilidades orquestales. Con la fachada, el controlador interactúa con un único punto de acceso.
+*   **Implementación:** Se ha implementado mediante el patrón **Singleton**. Los componentes visuales obtienen la instancia con `FachadaEcosistemaImpl.getInstance()`. Cuando piden `facade.ingresarDinero()`, internamente la fachada delega en el SA correspondiente, quitando acoplamiento directo entre Presentación y cada subsistema individual de Negocio.
+
+### 9.3 Patrón Abstract Factory (Creacional)
+**Archivos:** `FactoriaSA.java`, `FactoriaDAO.java` y sus implementaciones.
+
+Garantiza el bajo acoplamiento aislando la creación de objetos de las capas de Integración y Negocio.
+
+*   **Problema resuelto:** Los SA instanciaban los DAO usando `new DAOXxxImp()`, acoplándolos fuertemente a una implementación concreta y a una base de datos específica.
+*   **Implementación:** Se usan factorías Singleton (`FactoriaDAO.getInstance().generarDAO...()`). Los servicios piden el DAO a la factoría sin importar su implementación por debajo, cumpliendo el principio de Inversión de Dependencias. Lo mismo aplica para la capa de Negocio con `FactoriaSA`.
 

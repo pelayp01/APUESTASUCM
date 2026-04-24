@@ -8,35 +8,14 @@ Esta guía propone cómo podrías aplicar varios de los 23 patrones de diseño c
 
 Estos patrones te ayudarán a independizar tu sistema de cómo se crean sus objetos, haciéndolo más flexible.
 
-### 🌟 Abstract Factory / Factory Method
-**Problema actual:** En tus controladores estancias directamente los servicios usando `new` (ej. `this.saJugador = new SAJugadorImpl();`). Esto acopla la vista a la implementación exacta.
-**Implementación:**
-Crea un `FactoriaSA` y `FactoriaDAO`.
-```java
-// Negocio/FactoriaSA.java
-public abstract class FactoriaSA {
-    private static FactoriaSA instancia;
-
-    public static FactoriaSA getInstance() {
-        if (instancia == null) {
-            instancia = new FactoriaSAImpl();
-        }
-        return instancia;
-    }
-
-    public abstract SAJugador generaSAJugador();
-    // ... otros SAs
-}
-
-// Negocio/FactoriaSAImpl.java
-public class FactoriaSAImpl extends FactoriaSA {
-    @Override
-    public SAJugador generaSAJugador() {
-        return new SAJugadorImpl();
-    }
-}
-```
-*Uso en Controlador:* `this.saJugador = FactoriaSA.getInstance().generaSAJugador();`.
+### 🌟 Abstract Factory
+**Estado: IMPLEMENTADO**
+**Problema resuelto:** En tus controladores y servicios se instanciaban directamente las implementaciones usando `new` (ej. `new SAJugadorImpl()`, `new DAOCarteraImp()`). Esto acoplaba el código fuertemente a las implementaciones.
+**Implementación actual:**
+Se han creado `FactoriaSA` y `FactoriaDAO` como Singletons.
+*Uso en Controlador:* `FactoriaSA.getInstance().generarSAJugador();`
+*Uso en Servicio:* `FactoriaDAO.getInstance().generarDAOJugador();`
+De esta forma se cumple el principio de Inversión de Dependencias.
 
 ### 🌟 Builder (Constructor)
 **Problema actual:** Los objetos `TJugador` y `Usuario` pueden tener muchos atributos, lo que obliga a tener constructores gigantes o usar muchos `.setX()`.
@@ -60,9 +39,10 @@ TJugador jugador = new TJugador.Builder()
 
 Se enfocan en cómo las clases y objetos se componen para formar estructuras más grandes.
 
-### 🌟 Fachada (Facade)
-**Implementación actual:** Ya utilizas una filosofía Fachada con tus clases `SA...` (Servicio de Aplicación). Por ejemplo, `SAJugadorImpl` unifica el registro y comprobación de datos sin que la capa de Presentación sepa qué DAOs están operando abajo.
-**Mejora:** Puedes crear un `FachadaEcosistema` unificado si la interacción entre apuestas, carteras y jugadores se vuelve muy compleja.
+### 🌟 Fachada / Business Delegate (Facade)
+**Estado: IMPLEMENTADO**
+**Implementación actual:** Ya utilizas el patrón Fachada con `FachadaEcosistema` y su implementación `FachadaEcosistemaImpl`. Funciona también como un *Business Delegate* al centralizar y ocultar a la capa de presentación toda la complejidad de orquestar los Servicios de Aplicación (`SAJugador`, `SACartera`, etc.). Se accede a ella a través del patrón Singleton (`FachadaEcosistemaImpl.getInstance()`).
+
 
 ### 🌟 Proxy
 **Caso de uso:** Carga perezosa (Lazy Loading) de las imágenes de Recursos Educativos o el Historial del jugador.
@@ -110,8 +90,7 @@ Implementar un `EstadoBlackjack` evita que la interfaz tenga decenas de `if (jue
 **Implementación:** Configuras una cadena de objetos validadores. Si todos pasan a su sucesor, la acción procede. Si uno falla, se quiebra la cadena y devuelve un error concreto sin llenar los SAs de `if-else` gigantes.
 
 ---
-### Resumen Práctico: ¿Por dónde empezar?
-Te recomiendo implementar **los 3 siguientes** para dar un gran salto arquitectónico fácil de demostrar y explicar en clase/presentación:
-1. **Abstract Factory**: Crea las factorías `FactoriaSA` y `FactoriaDAO`. Quitará acoplamiento a las vistas y DAOs.
-2. **Observer**: Agrégalo en tu Panel de Jugador para que la UI se actualice sola si el saldo cambia en un minijuego sin pedir "refrescar" la pantalla.
-3. **Strategy**: Ideal para aplicar diferentes algoritmos de evaluación de factor de riesgo o fórmulas de premios en tus juegos.
+### Resumen Práctico: Próximos Pasos
+Te recomiendo implementar **los siguientes 2 patrones** para dar un gran salto arquitectónico fácil de demostrar y explicar en clase/presentación:
+1. **Observer**: Agrégalo en tu Panel de Jugador para que la UI se actualice sola si el saldo cambia en un minijuego sin pedir "refrescar" la pantalla manualmente.
+2. **Strategy**: Ideal para aplicar diferentes algoritmos de evaluación de factor de riesgo o fórmulas de premios en tus juegos.
