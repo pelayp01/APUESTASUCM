@@ -12,10 +12,11 @@
 3. [Capa de Integración — DAOs](#capa-integracion)
 4. [Capa de Negocio — SAs y Transfer Objects](#capa-negocio)
 5. [Capa de Presentación — Vistas y Controladores](#capa-presentacion)
-6. [Flujos Completos por Funcionalidad](#flujos)
+6. [Flujos Completos por Funcionalidad (Casos de Uso)](#flujos)
 7. [Datos de Prueba](#datos-prueba)
 8. [Puesta en Marcha](#puesta-en-marcha)
-9. [Patrones de Diseño Implementados](#patrones)
+9. [Patrones de Diseño Implementados (GoF)](#patrones)
+10. [Guía para la Defensa](#defensa)
 
 ---
 
@@ -30,7 +31,7 @@ graph TB
 
     subgraph "NEGOCIO (src/Negocio/)"
         F[Fachada\nFachadaEcosistema.java]
-        SA[Servicios de Aplicación\nSAXxx.java / SAXxxImpl.java]
+        SA[Servicios de Aplicación\nSAXxx.java / SAXxxImp.java]
         T[Transfer Objects\nTXxx.java]
     end
 
@@ -219,7 +220,7 @@ flowchart TD
 
 ---
 
-### `DAOJuegoImpl.java`
+### `DAOJuegoImp.java`
 
 | Método | SQL | Descripción |
 |--------|-----|-------------|
@@ -235,7 +236,7 @@ flowchart TD
 
 ---
 
-### `DAORecursoEducativoImpl.java`
+### `DAORecursoEducativoImp.java`
 
 | Método | SQL | Descripción |
 |--------|-----|-------------|
@@ -267,16 +268,18 @@ Los TOs son simples POJOs (solo campos + getters/setters) que transportan datos 
 | `TJuego` | `nombre`, `reglas`, `tipoJuego` |
 | `TSimulacion` | `idSimulacion`, `jugadorId`, `juegoNombre`, `cantidadApostada`, `resultadoFinal`, `valorEsperadoEnEseMomento`, `manoFinalJugador`, `manoFinalCrupier`, `fecha` |
 | `TCartera` | `idCartera`, `jugadorId`, `saldoActual`, `moneda` |
-| `TRecursoEducativo` | `idRecurso`, `titulo`, `contenido`, `tipo` |
+| `TRecursoEducativo` | `idRecurso`, `titulo`, `contenido`, `tipo` (INFOGRAFIA/ARTICULO/TEST) |
+| `TArticulo` | hereda de TRecursoEducativo + `autor`, `fechaPublicacion` |
+| `TInfografia` | hereda de TRecursoEducativo + `casosRelacionados` |
 | `TMensajeAlerta` | `idMensaje`, `contenido`, `umbralPerdida` |
 
 ---
 
-### `SAJugadorImpl.java`
+### `SAJugadorImp.java`
 
 ```
 SAJugador (interface)
-└── SAJugadorImpl (implements)
+└── SAJugadorImp (implements)
     ├── registrarJugador(TJugador) : boolean
     │     → Valida: edad >= 18, DNI no vacío, contraseña >= 5 chars
     │     → Delega a DAOJugadorImp.registrarJugador()
@@ -307,11 +310,11 @@ flowchart TD
 
 ---
 
-### `SACarteraImpl.java`
+### `SACarteraImp.java`
 
 ```
 SACartera (interface)
-└── SACarteraImpl (implements)
+└── SACarteraImp (implements)
     ├── consultarCartera(jugadorId) : TCartera
     ├── ingresarDinero(jugadorId, cantidad) : boolean
     │     → Valida: cantidad > 0
@@ -337,17 +340,17 @@ flowchart TD
 
 ---
 
-### `SASimulacionImpl.java`
+### `SASimulacionImp.java`
 
 ```
 SASimulacion (interface)
-└── SASimulacionImpl (implements)
+└── SASimulacionImp (implements)
     ├── consultarHistorial(jugadorId) : List<TSimulacion>
     │     → Valida: jugadorId no vacío
     │     → Delega a DAOSimulacionImp.leerPorJugador()
     └── jugarBlackjack(jugadorId, cantidadApostada) : TSimulacion
           → Valida: jugadorId, cantidadApostada > 0
-          → Retira apuesta de cartera (SACarteraImpl.retirarDinero)
+          → Retira apuesta de cartera (SACarteraImp.retirarDinero)
           → Simula resultado: 48% prob victoria (Math.random < 0.48)
           → Si gana → ingresa 2x apuesta en cartera
           → Crea TSimulacion y la inserta en BD
@@ -389,11 +392,11 @@ flowchart TD
 
 ---
 
-### `SARecursoEducativoImpl.java`
+### `SARecursoEducativoImp.java`
 
 ```
 SARecursoEducativo (interface)
-└── SARecursoEducativoImpl (implements)
+└── SARecursoEducativoImp (implements)
     ├── listarRecursos() : List<TRecursoEducativo>
     ├── buscarRecurso(idRecurso) : TRecursoEducativo
     ├── marcarComoVisto(jugadorId, recursoId) : boolean
@@ -406,11 +409,11 @@ SARecursoEducativo (interface)
 
 ---
 
-### `SAMensajeAlertaImpl.java`
+### `SAMensajeAlertaImp.java`
 
 ```
 SAMensajeAlerta (interface)
-└── SAMensajeAlertaImpl (implements)
+└── SAMensajeAlertaImp (implements)
     └── obtenerAlertas(perdidasAcumuladas) : List<TMensajeAlerta>
           → Si perdidasAcumuladas <= 0 → devuelve lista vacía
           → dao.leerPorUmbral(perdidasAcumuladas)
@@ -424,11 +427,11 @@ SAMensajeAlerta (interface)
 
 | Clase | Métodos | SA Usado |
 |-------|---------|----------|
-| `ControladorJugador` | `procesarRegistro(id,dni,nombre,apellidos,correo,pass,edad)`, `procesarLogin(correo,pass)` | `SAJugadorImpl` |
-| `ControladorCartera` | `consultarCartera(jugadorId)`, `ingresarDinero(jugadorId,cantidad)`, `retirarDinero(jugadorId,cantidad)` | `SACarteraImpl` |
-| `ControladorSimulacion` | `solicitarHistorial(jugadorId)`, `jugarBlackjack(jugadorId,apuesta)` | `SASimulacionImpl` |
-| `ControladorJuego` | `solicitarJuegos()` | `SAJuegoImpl` |
-| `ControladorRecursoEducativo` | `solicitarRecursos()`, `marcarComoVisto(jugadorId,recursoId)`, `solicitarHistorial(jugadorId)` | `SARecursoEducativoImpl` |
+| `ControladorJugador` | `procesarRegistro(id,dni,nombre,apellidos,correo,pass,edad)`, `procesarLogin(correo,pass)` | `SAJugadorImp` |
+| `ControladorCartera` | `consultarCartera(jugadorId)`, `ingresarDinero(jugadorId,cantidad)`, `retirarDinero(jugadorId,cantidad)` | `SACarteraImp` |
+| `ControladorSimulacion` | `solicitarHistorial(jugadorId)`, `jugarBlackjack(jugadorId,apuesta)` | `SASimulacionImp` |
+| `ControladorJuego` | `solicitarJuegos()` | `SAJuegoImp` |
+| `ControladorRecursoEducativo` | `solicitarRecursos()`, `marcarComoVisto(jugadorId,recursoId)`, `solicitarHistorial(jugadorId)` | `SARecursoEducativoImp` |
 
 > **Patrón de todos los controladores:** capturan la excepción del SA, la loguean por `System.err` y devuelven `null` / `false` a la vista si hay error.
 
@@ -441,7 +444,7 @@ SAMensajeAlerta (interface)
 | `VistaPrincipal` | Menú inicial: 3 botones (Registrar, Catálogo, Login) | — |
 | `VistaRegistroJugador` | Formulario de alta (nombre, DNI, correo, contraseña, edad) | `ControladorJugador` |
 | `VistaLogin` | Formulario login con opciones de rol (Jugador / Administrador) | `ControladorJugador`, `ControladorAdministrador` |
-| `VistaPanelJugador` | Hub post-login. Muestra alertas, botones de funcionalidad y "Mi Perfil" | `ControladorSimulacion`, `SAMensajeAlertaImpl` |
+| `VistaPanelJugador` | Hub post-login. Muestra alertas, botones de funcionalidad y "Mi Perfil" | `ControladorSimulacion`, `SAMensajeAlertaImp` |
 | `VistaPerfilJugador` | Permite actualizar datos personales o eliminar cuenta propia | `ControladorJugador` |
 | `VistaPanelAdministrador` | Menú post-login exclusivo para administradores | `ControladorAdministrador` |
 | `VistaGestionJugadores` | Listado completo CRUD de jugadores (Editar/Borrar plataforma) | `ControladorJugador` |
@@ -462,7 +465,7 @@ sequenceDiagram
     actor U as Usuario
     participant V as VistaRegistroJugador
     participant C as ControladorJugador
-    participant SA as SAJugadorImpl
+    participant SA as SAJugadorImp
     participant DAO as DAOJugadorImp
     participant BD as MySQL
 
@@ -494,10 +497,10 @@ sequenceDiagram
     actor U as Usuario
     participant VL as VistaLogin
     participant C as ControladorJugador
-    participant SA as SAJugadorImpl
+    participant SA as SAJugadorImp
     participant DAO as DAOJugadorImp
     participant VP as VistaPanelJugador
-    participant SAAL as SAMensajeAlertaImpl
+    participant SAAL as SAMensajeAlertaImp
     participant DAOSI as DAOSimulacionImp
     participant DAOMA as DAOMensajeAlertaImp
 
@@ -530,8 +533,8 @@ sequenceDiagram
     actor U as Usuario
     participant VB as VistaPlayBlackjack
     participant C as ControladorSimulacion
-    participant SA as SASimulacionImpl
-    participant SAC as SACarteraImpl
+    participant SA as SASimulacionImp
+    participant SAC as SACarteraImp
     participant DAO as DAOSimulacionImp
     participant DAOJ as DAOJugadorImp
 
@@ -563,13 +566,13 @@ sequenceDiagram
 ```mermaid
 flowchart TD
     A[VistaCartera se abre] --> B[ControladorCartera.consultarCartera]
-    B --> C[SACarteraImpl.consultarCartera]
+    B --> C[SACarteraImp.consultarCartera]
     C --> D[DAOCarteraImp.leerPorJugador]
     D --> E[SELECT FROM Cartera_Virtual WHERE jugador_id=?]
     E --> F[Muestra saldo y moneda en pantalla]
 
     G[Usuario pulsa Ingresar] --> H[ControladorCartera.ingresarDinero]
-    H --> I[SACarteraImpl.ingresarDinero]
+    H --> I[SACarteraImp.ingresarDinero]
     I --> J{cantidad > 0?}
     J -- No --> K[Error mostrado en vista]
     J -- Sí --> L[Lee cartera actual]
@@ -578,7 +581,7 @@ flowchart TD
     N --> O[Refresca vista]
 
     P[Usuario pulsa Retirar] --> Q[ControladorCartera.retirarDinero]
-    Q --> R[SACarteraImpl.retirarDinero]
+    Q --> R[SACarteraImp.retirarDinero]
     R --> S{saldo suficiente?}
     S -- No --> T[Error: Saldo insuficiente]
     S -- Sí --> U[nuevoSaldo = actual - cantidad]
@@ -593,19 +596,19 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[VistaRecursos se abre] --> B[ControladorRecursoEducativo.solicitarRecursos]
-    B --> C[SARecursoEducativoImpl.listarRecursos]
-    C --> D[DAORecursoEducativoImpl.leerTodos]
+    B --> C[SARecursoEducativoImp.listarRecursos]
+    C --> D[DAORecursoEducativoImp.leerTodos]
     D --> E[SELECT * FROM Recurso_Educativo]
     E --> F[Muestra tabla de recursos]
 
     G[Usuario pulsa Marcar como visto] --> H[ControladorRecursoEducativo.marcarComoVisto]
-    H --> I[SARecursoEducativoImpl.marcarComoVisto]
-    I --> J[DAORecursoEducativoImpl.registrarVisualizacion]
+    H --> I[SARecursoEducativoImp.marcarComoVisto]
+    I --> J[DAORecursoEducativoImp.registrarVisualizacion]
     J --> K[INSERT INTO Jugador_Recurso]
 
     L[Usuario pulsa Ver mis recursos vistos] --> M[ControladorRecursoEducativo.solicitarHistorial]
-    M --> N[SARecursoEducativoImpl.listarRecursosVistos]
-    N --> O[DAORecursoEducativoImpl.leerVistosPorJugador]
+    M --> N[SARecursoEducativoImp.listarRecursosVistos]
+    N --> O[DAORecursoEducativoImp.leerVistosPorJugador]
     O --> P[SELECT RE.* JOIN Jugador_Recurso WHERE jugador_id=?]
     P --> Q[Muestra tabla de recursos vistos]
 ```
@@ -745,7 +748,7 @@ src/
 │
 ├── Negocio/
 │   ├── FachadaEcosistema.java             ← Patrón Facade: Interfaz unificada para UI
-│   ├── FachadaEcosistemaImpl.java         ← Implementación del Facade que coordina SAs
+│   ├── FachadaEcosistemaImp.java         ← Impementación del Facade que coordina SAs
 │   ├── TUsuario.java                     ← TO base de usuarios (Usa Builder)
 │   ├── TJugador.java                     ← TO jugador (hereda, Usa Builder)
 │   ├── TAdministrador.java               ← TO administrador (hereda)
@@ -755,19 +758,19 @@ src/
 │   ├── TRecursoEducativo.java            ← TO Recurso (Usa Builder)
 │   ├── TMensajeAlerta.java               
 │   ├── SAJugador.java                    ← Interface: Auth + CRUD completo
-│   ├── SAJugadorImpl.java                
+│   ├── SAJugadorImp.java                
 │   ├── SAAdministrador.java              ← Interface: Auth Admin
-│   ├── SAAdministradorImpl.java          
+│   ├── SAAdministradorImp.java          
 │   ├── SACartera.java                    
-│   ├── SACarteraImpl.java                
+│   ├── SACarteraImp.java                
 │   ├── SASimulacion.java                 
-│   ├── SASimulacionImpl.java             
+│   ├── SASimulacionImp.java             
 │   ├── SAJuego.java                      
-│   ├── SAJuegoImpl.java                  
+│   ├── SAJuegoImp.java                  
 │   ├── SARecursoEducativo.java           
-│   ├── SARecursoEducativoImpl.java       
+│   ├── SARecursoEducativoImp.java       
 │   ├── SAMensajeAlerta.java              
-│   ├── SAMensajeAlertaImpl.java          
+│   ├── SAMensajeAlertaImp.java          
 │
 └── Integracion/
     ├── BDConexion.java                   ← Singleton MySQL
@@ -780,9 +783,9 @@ src/
     ├── DAOSimulacion.java                
     ├── DAOSimulacionImp.java             
     ├── DAOJuego.java                     
-    ├── DAOJuegoImpl.java                 
+    ├── DAOJuegoImp.java                 
     ├── DAORecursoEducativo.java          
-    ├── DAORecursoEducativoImpl.java      
+    ├── DAORecursoEducativoImp.java      
     ├── DAOMensajeAlerta.java             
     └── DAOMensajeAlertaImp.java          
 
@@ -793,7 +796,7 @@ pruebaBD.sql                              ← Script DDL + DML completo (1.6)
 
 ## 🏗️ 9. Patrones de Diseño Implementados {#patrones}
 
-Como parte de la evolución de la arquitectura y siguiendo la guía GoF, el proyecto implementa los siguientes patrones para asegurar el bajo acoplamiento y alta cohesión.
+Como parte de la evolución de la arquitectura y siguiendo la guía GoF, el proyecto Impementa los siguientes patrones para asegurar el bajo acoplamiento y alta cohesión.
 
 ### 9.1 Patrón Builder (Creacional)
 **Archivos:** `TUsuario.java`, `TJugador.java`, `TCartera.java`, `TRecursoEducativo.java`.
@@ -814,18 +817,102 @@ TJugador nuevoJugador = new TJugador.Builder()
 ```
 
 ### 9.2 Patrón Facade / Business Delegate (Estructural)
-**Archivos:** `FachadaEcosistema.java`, `FachadaEcosistemaImpl.java`.
+**Archivos:** `FachadaEcosistema.java`, `FachadaEcosistemaImp.java`.
 
 La Fachada actúa como un **Business Delegate**, proporcionando un punto de acceso único y centralizado para la Capa de Presentación, resguardándola de la lógica sobre múltiples `SA (Servicios de Aplicación)`.
 
 *   **Problema resuelto:** Los Controladores estaban asumiendo responsabilidades orquestales. Con la fachada, el controlador interactúa con un único punto de acceso.
-*   **Implementación:** Se ha implementado mediante el patrón **Singleton**. Los componentes visuales obtienen la instancia con `FachadaEcosistemaImpl.getInstance()`. Cuando piden `facade.ingresarDinero()`, internamente la fachada delega en el SA correspondiente, quitando acoplamiento directo entre Presentación y cada subsistema individual de Negocio.
+*   **Impementación:** Se ha Impementado mediante el patrón **Singleton**. Los componentes visuales obtienen la instancia con `FachadaEcosistemaImp.getInstance()`. Cuando piden `facade.ingresarDinero()`, internamente la fachada delega en el SA correspondiente, quitando acoplamiento directo entre Presentación y cada subsistema individual de Negocio.
 
 ### 9.3 Patrón Abstract Factory (Creacional)
 **Archivos:** `FactoriaSA.java`, `FactoriaDAO.java` y sus implementaciones.
 
 Garantiza el bajo acoplamiento aislando la creación de objetos de las capas de Integración y Negocio.
 
-*   **Problema resuelto:** Los SA instanciaban los DAO usando `new DAOXxxImp()`, acoplándolos fuertemente a una implementación concreta y a una base de datos específica.
-*   **Implementación:** Se usan factorías Singleton (`FactoriaDAO.getInstance().generarDAO...()`). Los servicios piden el DAO a la factoría sin importar su implementación por debajo, cumpliendo el principio de Inversión de Dependencias. Lo mismo aplica para la capa de Negocio con `FactoriaSA`.
+*   **Problema resuelto:** Los SA instanciaban los DAO usando `new DAOXxxImp()`, acoplándolos fuertemente a una Impementación concreta y a una base de datos específica.
+*   **Impementación:** Se usan factorías Singleton (`FactoriaDAO.getInstance().generarDAO...()`). Los servicios piden el DAO a la factoría sin importar su Impementación por debajo, cumpliendo el principio de Inversión de Dependencias. Lo mismo aplica para la capa de Negocio con `FactoriaSA`.
 
+
+---
+
+## 🏁 10. Guía para la Defensa {#defensa}
+
+# 🛡️ Guía para la Defensa del Proyecto: ApuestasUCM
+
+Este documento contiene los puntos clave para realizar una defensa sólida del proyecto **ApuestasUCM (Ludopatía UCM)**, centrándose en las decisiones técnicas y de diseño solicitadas por la profesora.
+
+---
+
+## 🏗️ 1. Arquitectura del Sistema (N-Tier)
+
+El proyecto se basa en una **Arquitectura en 3 Capas** (Presentación, Negocio e Integración). Esta separación garantiza que los cambios en la interfaz no afecten a la lógica y que la lógica sea independiente del motor de base de datos.
+
+1.  **Capa de Presentación (Swing + MVC):**
+    *   **Vistas:** Interfaces gráficas construidas con Java Swing.
+    *   **Controladores:** Actúan como intermediarios. Capturan los eventos de la vista y delegan en la Fachada. **Importante:** Las vistas nunca acceden directamente al Negocio.
+2.  **Capa de Negocio (Lógica de Aplicación):**
+    *   **Fachada (FachadaEcosistema):** El "cerebro" central. Es el único punto de entrada para la Presentación.
+    *   **Servicios de Aplicación (SA):** Clases que contienen las reglas de negocio (ej. validación de edad, cálculo de riesgo de ludopatía).
+    *   **Transfer Objects (TO):** Objetos simples que transportan datos entre capas para evitar el acoplamiento excesivo.
+3.  **Capa de Integración (Persistencia):**
+    *   **DAO (Data Access Object):** Encapsulan el acceso a MySQL mediante JDBC. Cada DAO se encarga de una entidad (Jugador, Cartera, etc.).
+    *   **BDConexion:** Gestiona la conexión única con la base de datos.
+
+---
+
+## 🛠️ 2. Patrones de Diseño Implementados
+
+Hemos implementado patrones de diseño **GoF** para asegurar un código robusto y mantenible:
+
+| Patrón | Por qué se ha implementado |
+| :--- | :--- |
+| **Fachada (Facade)** | Proporciona una interfaz unificada y simplificada. Evita que la UI tenga que conocer todos los servicios internos. |
+| **DAO (Data Access Object)** | Abstrae el almacenamiento. Si mañana cambiamos MySQL por un fichero XML, solo cambiamos el DAO, no el resto del programa. |
+| **Abstract Factory** | (FactoriaSA / FactoriaDAO) Centraliza la creación de implementaciones. Permite desacoplar las interfaces de sus clases concretas (`SAJugadorImp`). |
+| **Singleton** | Se usa en `BDConexion` y las Factorías. Asegura que solo exista una instancia global, ahorrando memoria y conexiones abiertas. |
+| **Builder** | Se aplica en los Transfer Objects (ej. `TJugador`). Permite crear objetos complejos paso a paso de forma legible y segura. |
+| **Transfer Object (TO)** | Crucial para la comunicación entre capas sin pasar múltiples parámetros primitivos. |
+
+---
+
+## 🔄 3. Casos de Uso Críticos y Flujos
+
+Los casos de uso que definen la esencia del proyecto son:
+
+### 1️⃣ Registro de Jugador con Transacción
+*   **Importancia:** Involucra tres tablas de forma atómica.
+*   **Flujo:**
+    1.  El SA valida que el usuario sea **mayor de 18 años**.
+    2.  El DAO inicia una **transacción SQL**.
+    3.  Se inserta en `Usuario` -> `Jugador` -> `Cartera_Virtual` (con saldo inicial).
+    4.  Si algo falla, se hace `rollback` para no dejar datos inconsistentes.
+
+### 2️⃣ Simulación de Blackjack y Evaluación de Riesgo
+*   **Importancia:** Es el núcleo del sistema de prevención.
+*   **Flujo:**
+    1.  El jugador apuesta. El sistema descuenta el saldo.
+    2.  Se simula la partida. Si gana, se ingresa el premio.
+    3.  **Evaluación Automática:** Inmediatamente después, el SA analiza el historial. Si hay rachas perdedoras o pérdidas totales elevadas, el riesgo del jugador sube a **ALTO** o **MEDIO**.
+
+### 3️⃣ Prevención Activa (Alertas)
+*   **Importancia:** Cumple el objetivo social del proyecto.
+*   **Flujo:**
+    1.  Al iniciar sesión, el sistema carga las alertas basadas en el umbral de pérdida del jugador.
+    2.  Si el jugador intenta jugar siendo menor, se le muestra un recurso educativo obligatorio.
+
+---
+
+## 🗄️ 4. Modelo de Datos y Relaciones
+
+La base de datos MySQL está diseñada para cumplir los requisitos de herencia y multiplicidad de IS2:
+
+*   **Herencia (Table-per-Class):** `Usuario` es la tabla padre. `Jugador` y `Administrador` tienen sus propias tablas que heredan el ID (FK y PK) de Usuario.
+*   **Relación 1:1:** Cada `Jugador` tiene exactamente una `Cartera_Virtual`.
+*   **Relación 1:N:** Un `Jugador` puede tener múltiples `Simulaciones` (historial).
+*   **Relación N:M:** Un `Jugador` puede ver múltiples `Recursos_Educativos`, y un recurso puede ser visto por muchos jugadores (registrado en la tabla intermedia `Jugador_Recurso`).
+
+---
+
+## 🏁 5. Conclusión para la Defensa
+
+"Hemos construido un ecosistema digital que no solo simula un casino, sino que aplica técnicas de **Ingeniería de Software** para proteger al usuario. Gracias al uso de patrones como la **Fachada** y el **DAO**, el sistema es escalable. La lógica de **evaluación de riesgo** integrada en el Negocio demuestra cómo la tecnología puede servir para la prevención social."
