@@ -1,35 +1,38 @@
 ```mermaid
 sequenceDiagram
     autonumber
-    participant V as VistaLecturaRecurso (ActionListener)
+    participant V as VistaLecturaRecurso
     participant C as ControladorRecursoEducativo
     participant F as FachadaEcosistemaImp
     participant SA as SARecursoEducativoImp
     participant Fact as FactoriaDAO
     participant DAO as DAORecursoEducativoImp
-    participant DB as BDConexion (MySQL)
+    participant DB as BDConexion
 
     V->>C: marcarComoVisto(jugadorId, recursoId)
     C->>F: marcarRecursoComoVisto(jugadorId, recursoId)
     F->>SA: marcarComoVisto(jugadorId, recursoId)
     
-    Note over SA: Obtener el DAO de recursos
     SA->>Fact: generarDAORecursoEducativo()
-    Fact-->>SA: daoRecurso (Instancia)
+    Fact-->>SA: daoRecurso
     
-    SA->>DAO: yaVisualizado(jugadorId, recursoId)
-    DAO->>DB: getConnection()
-    DB-->>DAO: ResultSet (count)
+    Note over SA, DAO: El SA solo pide registrar la acción
+    SA->>DAO: registrarVisualizacion(jugadorId, recursoId)
     
-    alt yaVisualizado == false
-        SA->>DAO: registrarVisualizacion(jugadorId, recursoId)
-        DAO->>DB: PreparedStatement.executeUpdate(sqlInsert)
-        DB-->>DAO: void
-        DAO-->>SA: true
-    else yaVisualizado == true
-        DAO-->>SA: true
+    rect rgb(240, 240, 240)
+        Note over DAO: Lógica interna del DAO para evitar duplicados
+        DAO->>DAO: yaVisualizado(jugadorId, recursoId)
+        DAO->>DB: SELECT COUNT(*) ...
+        DB-->>DAO: rs (0 o 1)
     end
     
+    alt yaVisualizado == false
+        DAO->>DB: INSERT INTO Jugador_Recurso ...
+        DB-->>DAO: ok
+    end
+    
+    DAO-->>SA: true
     SA-->>F: true
     F-->>C: true
     C-->>V: true
+
